@@ -35,3 +35,6 @@ SURFERSETFIND = "Поиск couchsurfer'а..."
 
 # Neighbours
 USERLOCATION = 'Отправьте своё местоположение'
+
+# voice error
+VOICEERROR = 'Повторите, пожалуйста, я вас не понимаю'

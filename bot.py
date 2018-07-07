@@ -1,8 +1,10 @@
 import config
-import telebot
-import messages
-import sqlite3
+import voice
 import database
+import messages
+
+import telebot
+import sqlite3
 from telebot import types
 import random
 import math
@@ -16,16 +18,22 @@ database.create_estabs_db()
 
 
 def get_stage(message):
+    database.create_users_db()
     # open connection
     conn = sqlite3.connect(config.db_name)
     cursor = conn.cursor()
     a = cursor.execute(f"SELECT reg_stage FROM {config.users_table} WHERE id='{message.chat.id}'").fetchall()
-    a = a[0][0]
+    if len(a) > 0:
+        a = a[0][0]
+        # close connection
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return a
     # close connection
     conn.commit()
     cursor.close()
     conn.close()
-    return a
 
 # Register user
 def create_user(message):
@@ -308,11 +316,11 @@ def set_surfer(message):
     cursor = conn.cursor()
     # looking for surfer
     all_surfers = cursor.execute(f"SELECT id FROM {config.users_table} WHERE reg_stage={15}").fetchall()
-    surfer = random.choice(all_surfers)[0]
-    if len(surfer) == 0:
-        bot.send_message("К сожалению, не не удалось найти couchsurfer'а")
+    if len(all_surfers) == 0:
+        bot.send_message(message.chat.id, "К сожалению, не не удалось найти couchsurfer'а")
         cursor.execute(f"UPDATE {config.users_table} SET reg_stage=4 WHERE id='{message.chat.id}'")
     else:
+        surfer = random.choice(all_surfers)[0]
         # set reg_status
         cursor.execute(f"UPDATE {config.users_table} SET reg_stage=17 WHERE id='{message.chat.id}'")
         cursor.execute(f"UPDATE {config.users_table} SET reg_stage=17 WHERE id='{surfer}'")
@@ -466,16 +474,18 @@ def set_user_location(message):
 
 
 def modes(message):
-    if message.text == config.add:
+    if message.text in config.add_list:
         create_estab(message)
-    if message.text == config.choose:
+    elif message.text in config.choose_list:
         create_request(message)
-    if message.text == config.tobe:
+    elif message.text in config.tobe_list:
         set_status_tobe(message)
-    if message.text == config.find:
+    elif message.text in config.find_list:
         set_status_find(message)
-    if message.text == config.neighbour:
+    elif message.text in config.neighbour_list:
         set_status_neighbour(message)
+    else:
+        bot.send_message(message.chat.id, messages.VOICEERROR)
 
 
 @bot.message_handler(commands=['start'])
@@ -537,6 +547,9 @@ def get_location(message):
 @bot.message_handler(content_types=['voice'])
 def get_voice(message):
     stage = get_stage(message)
+    if stage == 4:
+        message.text = voice.voice_to_text(message)
+        modes(message)
     if stage == 17:
         pair_mode(message, 'voice')
 
